@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>简谐运动与匀速圆周运动投影 3D 仿真</title>
+  <style>
+    :root{
+      --bg:#07111f;
+      --bg2:#0b1730;
+      --panel:#101c33d9;
+      --panel-solid:#101c33;
+      --panel-2:#172540;
+      --text:#eaf2ff;
+      --muted:#9fb1d2;
+      --line:#d8e7ff;
+      --grid:#37506e;
+      --accent:#4bd8ff;
+      --accent2:#ffcf4b;
+      --accent3:#ff6b8a;
+      --good:#8dffba;
+      --warn:#ffb86b;
+      --shadow: 0 16px 55px rgba(0,0,0,.45);
+      --side: 332px;
+      --side-min: 58px;
+      --radius: 18px;
+      --thick: 3;
+      --font: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+    }
+
+    body.light{
+      --bg:#eef5ff;
+      --bg2:#dbeafd;
+      --panel:#ffffffdf;
+      --panel-solid:#ffffff;
+      --panel-2:#eef5ff;
+      --text:#14223a;
+      --muted:#52647d;
+      --line:#17243b;
+      --grid:#b2c4dc;
+      --accent:#006dff;
+      --accent2:#a06b00;
+      --accent3:#d7255c;
+      --good:#00854a;
+      --warn:#b65700;
+      --shadow: 0 14px 45px rgba(36,69,111,.22);
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ width:100%; height:100%; margin:0; overflow:hidden; }
+    body{
+      font-family: var(--font);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(75,216,255,.18), transparent 32%),
+        radial-gradient(circle at 88% 12%, rgba(255,207,75,.12), transparent 30%),
+        linear-gradient(135deg, var(--bg), var(--bg2));
+      color:var(--text);
+      user-select:none;
+    }
+
+    #app{ position:relative; width:100%; height:100%; }
+
+    .sidebar{
+      position:fixed;
+      left:0; top:0; bottom:0;
+      width:var(--side);
+      z-index:20;
+      background:linear-gradient(180deg, var(--panel), rgba(10,18,32,.88));
+      border-right:1px solid rgba(255,255,255,.13);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      transition: width .22s ease, transform .22s ease;
+      overflow:hidden;
+    }
+    body.light .sidebar{ background:linear-gradient(180deg, var(--panel), rgba(255,255,255,.88)); }
+    body.sidebar-collapsed .sidebar{ width:var(--side-min); }
+
+    .side-inner{ width:var(--side); height:100%; display:flex; flex-direction:column; }
+    .side-top{
+      min-height:66px;
+      display:flex; align-items:center; gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.12);
+    }
+    .collapse-btn, .icon-btn{
+      width:40px; height:40px; border-radius:14px;
+      border:1px solid rgba(255,255,255,.15);
+      background:rgba(255,255,255,.08);
+      color:var(--text);
+      font-size:20px;
+      cursor:pointer;
+      display:grid; place-items:center;
+      transition:.18s transform, .18s background;
+    }
+    .collapse-btn:hover, .icon-btn:hover{ transform:translateY(-1px); background:rgba(255,255,255,.14); }
+    .brand{ flex:1; min-width:0; }
+    .brand h1{ font-size:18px; line-height:1.18; margin:0; letter-spacing:.3px; }
+    .brand p{ font-size:12px; line-height:1.25; margin:5px 0 0; color:var(--muted); }
+    body.sidebar-collapsed .brand,
+    body.sidebar-collapsed .controls-scroll,
+    body.sidebar-collapsed .side-foot{ opacity:0; pointer-events:none; }
+
+    .controls-scroll{ overflow:auto; padding:14px; flex:1; transition:opacity .14s; }
+    .control-group{
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:var(--radius);
+      padding:14px 14px 12px;
+      margin-bottom:12px;
+    }
+    body.light .control-group{ background:rgba(17,52,94,.055); border-color:rgba(20,34,58,.12); }
+    .control-group h2{
+      font-size:14px; margin:0 0 12px;
+      display:flex; align-items:center; justify-content:space-between;
+      letter-spacing:.5px;
+    }
+    .row{ margin:12px 0; }
+    .row label{ display:flex; justify-content:space-between; gap:8px; align-items:center; font-size:13px; color:var(--text); }
+    .value{ color:var(--accent); font-variant-numeric:tabular-nums; font-weight:700; }
+    input[type="range"]{ width:100%; accent-color:var(--accent); cursor:pointer; }
+    .range-line{ margin-top:8px; }
+    .two{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .three{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    button, select{
+      font-family:var(--font);
+    }
+    .primary-btn, .small-btn, select{
+      border:1px solid rgba(255,255,255,.18);
+      background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.06));
+      color:var(--text);
+      border-radius:13px;
+      padding:10px 9px;
+      cursor:pointer;
+      font-weight:700;
+      letter-spacing:.2px;
+      min-height:42px;
+      transition:.16s transform, .16s filter, .16s background;
+    }
+    body.light .primary-btn, body.light .small-btn, body.light select{ border-color:rgba(20,34,58,.14); background:linear-gradient(180deg, #fff, #edf5ff); }
+    .primary-btn:hover, .small-btn:hover, select:hover{ transform:translateY(-1px); filter:brightness(1.08); }
+    .primary-btn{
+      background:linear-gradient(135deg, rgba(75,216,255,.92), rgba(68,116,255,.82));
+      color:#06111e;
+      border:0;
+      box-shadow:0 10px 28px rgba(75,216,255,.24);
+    }
+    body.light .primary-btn{ color:white; }
+    .small-btn.active{ outline:2px solid var(--accent); color:var(--accent); }
+    select{ width:100%; appearance:none; }
+    .toggle-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:13px; margin:10px 0; }
+    .switch{ position:relative; width:48px; height:27px; flex:0 0 auto; }
+    .switch input{ display:none; }
+    .slider{ position:absolute; inset:0; border-radius:999px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.15); cursor:pointer; }
+    .slider:before{ content:""; position:absolute; width:21px; height:21px; left:3px; top:2px; border-radius:50%; background:var(--text); transition:.18s; }
+    .switch input:checked + .slider{ background:rgba(75,216,255,.5); }
+    .switch input:checked + .slider:before{ transform:translateX(20px); background:#fff; }
+    .hint{ font-size:12px; color:var(--muted); line-height:1.55; margin:8px 0 0; }
+    .mini-graph-wrap{
+      margin-top:8px;
+      border-radius:16px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+    }
+    body.light .mini-graph-wrap{ background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(236,244,255,.85)); border-color:rgba(20,34,58,.12); }
+    #sidebarGraph{ width:100%; height:228px; display:block; }
+    .legend-inline{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:10px; font-size:12px; color:var(--muted); }
+    .legend-item{ display:flex; align-items:center; gap:6px; }
+    .legend-dot{ width:12px; height:4px; border-radius:999px; display:inline-block; }
+    .side-foot{ padding:12px 14px; font-size:12px; color:var(--muted); border-top:1px solid rgba(255,255,255,.1); transition:opacity .14s; }
+
+    .main{
+      position:absolute; left:var(--side); right:0; top:0; bottom:0;
+      transition:left .22s ease;
+      display:flex; flex-direction:column;
+      min-width:0;
+    }
+    body.sidebar-collapsed .main{ left:var(--side-min); }
+
+    .topbar{
+      height:64px;
+      display:flex; align-items:center; justify-content:space-between; gap:14px;
+      padding:10px 18px;
+      border-bottom:1px solid rgba(255,255,255,.11);
+      background:rgba(0,0,0,.08);
+      backdrop-filter: blur(10px);
+    }
+    body.light .topbar{ background:rgba(255,255,255,.32); }
+    .title-main{ min-width:0; }
+    .title-main h2{ margin:0; font-size:20px; line-height:1.15; letter-spacing:.4px; }
+    .title-main p{ margin:5px 0 0; color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .badge-line{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+    .badge{ padding:7px 10px; border:1px solid rgba(255,255,255,.14); border-radius:999px; background:rgba(255,255,255,.08); font-size:12px; color:var(--text); }
+    .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; background:var(--good); margin-right:5px; box-shadow:0 0 12px var(--good); }
+    .dot.paused{ background:var(--warn); box-shadow:0 0 12px var(--warn); }
+
+    .stage{
+      flex:1;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+      padding:14px;
+      min-height:0;
+    }
+    .panel{
+      min-width:0; min-height:0;
+      position:relative;
+      overflow:hidden;
+      border-radius:24px;
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.035));
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:var(--shadow);
+    }
+    body.light .panel{ background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(239,247,255,.82)); border-color:rgba(20,34,58,.12); }
+    .panel canvas{ width:100%; height:100%; display:block; touch-action:none; }
+    .panel-label{
+      position:absolute; left:16px; top:14px;
+      display:flex; flex-direction:column; gap:4px;
+      pointer-events:none;
+      z-index:3;
+    }
+    .panel-label strong{ font-size:18px; line-height:1.1; text-shadow:0 2px 8px rgba(0,0,0,.22); }
+    .panel-label span{ font-size:12px; color:var(--muted); }
+    .corner-tip{
+      position:absolute; right:14px; top:14px;
+      padding:8px 10px;
+      border-radius:999px;
+      background:rgba(0,0,0,.22);
+      color:var(--text);
+      font-size:12px;
+      border:1px solid rgba(255,255,255,.12);
+      pointer-events:none;
+    }
+    body.light .corner-tip{ background:rgba(255,255,255,.62); }
+
+    .analysis{
+      position:fixed;
+      right:18px; bottom:18px;
+      width:min(430px, calc(100vw - var(--side) - 46px));
+      max-height:48vh;
+      z-index:18;
+      border-radius:22px;
+      background:var(--panel);
+      border:1px solid rgba(255,255,255,.14);
+      backdrop-filter:blur(18px);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      transition:.2s height, .2s width, .2s transform;
+    }
+    body.sidebar-collapsed .analysis{ width:min(430px, calc(100vw - var(--side-min) - 46px)); }
+    .analysis.collapsed{ width:210px; height:54px; }
+    .analysis-head{
+      height:54px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:0 12px 0 16px;
+      border-bottom:1px solid rgba(255,255,255,.12);
+    }
+    .analysis-head strong{ font-size:15px; }
+    .analysis-body{ padding:14px 16px 16px; overflow:auto; max-height:calc(48vh - 54px); font-size:14px; line-height:1.62; color:var(--text); }
+    .analysis-body p{ margin:0 0 10px; }
+    .analysis-body .em{ color:var(--accent); font-weight:800; }
+    .analysis-body .mini-title{ color:var(--accent2); font-weight:800; margin-top:6px; }
+    .analysis.collapsed .analysis-body{ display:none; }
+
+    .mobile-fab{
+      display:none;
+      position:fixed; left:12px; bottom:12px; z-index:30;
+      width:50px; height:50px; border-radius:17px;
+      border:1px solid rgba(255,255,255,.18);
+      background:var(--panel-solid);
+      color:var(--text); box-shadow:var(--shadow);
+      font-size:22px;
+    }
+
+    @media (max-width: 960px){
+      :root{ --side: 300px; }
+      .stage{ grid-template-columns:1fr; grid-template-rows:1fr 1fr; gap:10px; padding:10px; }
+      .topbar{ height:72px; align-items:flex-start; flex-direction:column; gap:4px; padding:10px 12px; }
+      .badge-line{ justify-content:flex-start; }
+      .title-main h2{ font-size:18px; }
+      .title-main p{ white-space:normal; }
+      .analysis{ width:min(420px, calc(100vw - 28px)); right:14px; bottom:14px; }
+      body.sidebar-collapsed .analysis{ width:min(420px, calc(100vw - 28px)); }
+    }
+
+    @media (max-width: 680px){
+      body{ overflow:hidden; }
+      .sidebar{ transform:translateX(-100%); width:min(88vw, 326px); }
+      .side-inner{ width:min(88vw, 326px); }
+      body.mobile-sidebar-open .sidebar{ transform:translateX(0); }
+      body.sidebar-collapsed .sidebar{ width:min(88vw, 326px); }
+      body.sidebar-collapsed .brand,
+      body.sidebar-collapsed .controls-scroll,
+      body.sidebar-collapsed .side-foot{ opacity:1; pointer-events:auto; }
+      .main, body.sidebar-collapsed .main{ left:0; }
+      .mobile-fab{ display:grid; place-items:center; }
+      .stage{ padding:8px; }
+      .panel{ border-radius:18px; }
+      .panel-label strong{ font-size:15px; }
+      .corner-tip{ display:none; }
+      .analysis{ right:8px; bottom:72px; width:calc(100vw - 16px); max-height:42vh; }
+      .analysis.collapsed{ width:194px; }
+      .badge:nth-child(n+3){ display:none; }
+    }
+  </style>
+</head>
+<body class="dark">
+<div id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="side-inner">
+      <div class="side-top">
+        <button class="collapse-btn" id="collapseBtn" title="收起/展开控制栏">☰</button>
+        <div class="brand">
+          <h1>简谐运动投影仿真</h1>
+          <p>匀速圆周运动 → 水平/竖直分运动</p>
+        </div>
+      </div>
+
+      <div class="controls-scroll">
+        <section class="control-group">
+          <h2>播放控制 <span class="value" id="stateText">运行中</span></h2>
+          <div class="two">
+            <button class="primary-btn" id="playBtn">暂停</button>
+            <button class="small-btn" id="resetBtn">复位</button>
+          </div>
+          <div class="row">
+            <label>时间位置 <span class="value" id="timeVal">0°</span></label>
+            <input class="range-line" id="timeSlider" type="range" min="0" max="360" step="1" value="0">
+          </div>
+          <div class="row">
+            <label>运动速度 <span class="value" id="speedVal">1.00×</span></label>
+            <input class="range-line" id="speed" type="range" min="0.15" max="3" step="0.05" value="1">
+          </div>
+        </section>
+
+        <section class="control-group">
+          <h2>运动参数</h2>
+          <div class="row">
+            <label>圆半径 / 振幅 <span class="value" id="ampVal">120</span></label>
+            <input class="range-line" id="amp" type="range" min="60" max="180" step="2" value="120">
+          </div>
+          <div class="row">
+            <label>初始位置 <span class="value" id="phaseVal">0°</span></label>
+            <input class="range-line" id="phase" type="range" min="0" max="360" step="5" value="0">
+          </div>
+          <div class="row">
+            <label>运动方向</label>
+            <select id="direction">
+              <option value="1">逆时针</option>
+              <option value="-1">顺时针</option>
+            </select>
+          </div>
+          <div class="three">
+            <button class="small-btn" data-preset="standard">标准</button>
+            <button class="small-btn" data-preset="slow">慢放</button>
+            <button class="small-btn" data-preset="phase90">相位差</button>
+          </div>
+          <p class="hint">拖动时间滑块时会自动暂停，适合逐帧讲解“投影点为什么做往复运动”。</p>
+        </section>
+
+        <section class="control-group">
+          <h2>显示内容</h2>
+          <div class="toggle-row"><span>显示水平分运动</span><label class="switch"><input id="showX" type="checkbox" checked><span class="slider"></span></label></div>
+          <div class="toggle-row"><span>显示竖直分运动</span><label class="switch"><input id="showY" type="checkbox" checked><span class="slider"></span></label></div>
+          <div class="toggle-row"><span>显示投影辅助线</span><label class="switch"><input id="showGuide" type="checkbox" checked><span class="slider"></span></label></div>
+          <div class="toggle-row"><span>保留运动轨迹</span><label class="switch"><input id="showTrail" type="checkbox" checked><span class="slider"></span></label></div>
+          <div class="toggle-row"><span>显示时间图像</span><label class="switch"><input id="showGraph" type="checkbox" checked><span class="slider"></span></label></div>
+          <div class="toggle-row"><span>显示网格背景</span><label class="switch"><input id="showGrid" type="checkbox" checked><span class="slider"></span></label></div>
+        </section>
+
+        <section class="control-group">
+          <h2>侧栏实时曲线</h2>
+          <div class="mini-graph-wrap">
+            <canvas id="sidebarGraph"></canvas>
+          </div>
+          <div class="legend-inline">
+            <span class="legend-item"><span class="legend-dot" style="background:var(--accent);"></span>水平位移 x(t)</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--accent3);"></span>竖直位移 y(t)</span>
+          </div>
+          <div class="row">
+            <button class="small-btn" id="clearSideGraph">清空侧栏曲线</button>
+          </div>
+          <p class="hint">当左侧圆周点转动时，这里会同步描绘位移—时间曲线；亮点表示当前时刻，便于把“圆周位置”和“投影曲线”对应起来。</p>
+        </section>
+
+        <section class="control-group">
+          <h2>课堂显示</h2>
+          <div class="row">
+            <label>线条粗细 <span class="value" id="lineVal">3.0</span></label>
+            <input class="range-line" id="lineWidth" type="range" min="2" max="8" step="0.5" value="3">
+          </div>
+          <div class="row">
+            <label>标签字号 <span class="value" id="fontVal">16</span></label>
+            <input class="range-line" id="fontSize" type="range" min="12" max="28" step="1" value="16">
+          </div>
+          <div class="two">
+            <button class="small-btn" id="themeBtn">切换浅色</button>
+            <button class="small-btn" id="classBtn">课堂增强</button>
+          </div>
+        </section>
+
+        <section class="control-group">
+          <h2>3D 观察</h2>
+          <div class="row">
+            <label>放大缩小 <span class="value" id="zoomVal">1.00×</span></label>
+            <input class="range-line" id="zoom" type="range" min="0.65" max="1.8" step="0.02" value="1">
+          </div>
+          <div class="two">
+            <button class="small-btn" id="viewFront">正视图</button>
+            <button class="small-btn" id="viewTilt">斜视图</button>
+          </div>
+          <p class="hint">左侧 3D 图可用鼠标/手指拖拽旋转；滚轮或双指可缩放。</p>
+        </section>
+      </div>
+
+      <div class="side-foot">建议投影时开启“课堂增强”，线条更粗、标签更大，后排更容易看清。</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="title-main">
+        <h2>合运动与分运动同步呈现</h2>
+        <p>同一个圆周点，在水平和竖直方向上的投影，都表现为有规律的往复运动。</p>
+      </div>
+      <div class="badge-line">
+        <span class="badge"><span class="dot" id="liveDot"></span><span id="topState">运行中</span></span>
+        <span class="badge">左：圆周合运动</span>
+        <span class="badge">右：两个简谐分运动</span>
+      </div>
+    </header>
+
+    <section class="stage">
+      <div class="panel" id="panel3d">
+        <div class="panel-label"><strong>圆周合运动</strong><span>拖拽旋转 · 滚轮缩放 · 投影观察</span></div>
+        <div class="corner-tip">3D 可旋转</div>
+        <canvas id="canvas3d"></canvas>
+      </div>
+      <div class="panel" id="panel2d">
+        <div class="panel-label"><strong>水平 / 竖直分运动</strong><span>与左侧圆周点完全同步</span></div>
+        <div class="corner-tip">暂停后可逐帧分析</div>
+        <canvas id="canvas2d"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <section class="analysis" id="analysis">
+    <div class="analysis-head">
+      <strong>过程分析</strong>
+      <button class="icon-btn" id="analysisBtn" title="折叠/展开分析说明">▾</button>
+    </div>
+    <div class="analysis-body">
+      <p><span class="em">观察重点：</span>左侧小球沿圆周匀速转动；把它“垂直投影”到水平轴或竖直轴上，投影点就只在一条直线上来回运动。</p>
+      <p class="mini-title">为什么中间最快？</p>
+      <p>投影点经过中心附近时，圆周小球运动方向几乎沿着该轴方向，所以投影移动最快。</p>
+      <p class="mini-title">为什么两端会变慢并反向？</p>
+      <p>投影点到达最左、最右、最高或最低位置时，圆周运动方向几乎与该轴垂直，沿轴方向的运动效果最小，因此看起来短暂停顿后反向。</p>
+      <p class="mini-title">课堂提问建议</p>
+      <p>暂停在四分之一周、半周、四分之三周处，让学生判断水平投影和竖直投影的位置、运动方向和快慢。</p>
+    </div>
+  </section>
+
+  <button class="mobile-fab" id="mobileFab" title="打开控制栏">☰</button>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =========================
+     1. 全局状态：所有控件和动画共享
+     ========================= */
+  const state = {
+    running: true,
+    time: 0,
+    speed: 1,
+    amp: 120,
+    phase: 0,
+    direction: 1,
+    showX: true,
+    showY: true,
+    showGuide: true,
+    showTrail: true,
+    showGraph: true,
+    showGrid: true,
+    lineWidth: 3,
+    fontSize: 16,
+    zoom: 1,
+    rotX: -0.62,
+    rotY: 0.62,
+    theme: "dark",
+    classroom: false,
+    lastTick: 0,
+    graphHistory: [],
+    circleTrail: []
+  };
+
+  const TAU = Math.PI * 2;
+  const DEG = 180 / Math.PI;
+  const MAX_HISTORY = 700;
+  const MAX_TRAIL = 200;
+
+  /* =========================
+     2. DOM 工具
+     ========================= */
+  const $ = (id) => document.getElementById(id);
+  const canvas3d = $("canvas3d");
+  const canvas2d = $("canvas2d");
+  const canvasSide = $("sidebarGraph");
+  const ctx3d = canvas3d.getContext("2d");
+  const ctx2d = canvas2d.getContext("2d");
+  const ctxSide = canvasSide.getContext("2d");
+
+  const controls = {
+    playBtn: $("playBtn"), resetBtn: $("resetBtn"), timeSlider: $("timeSlider"),
+    speed: $("speed"), amp: $("amp"), phase: $("phase"), direction: $("direction"),
+    showX: $("showX"), showY: $("showY"), showGuide: $("showGuide"), showTrail: $("showTrail"),
+    showGraph: $("showGraph"), showGrid: $("showGrid"), lineWidth: $("lineWidth"),
+    fontSize: $("fontSize"), zoom: $("zoom"), themeBtn: $("themeBtn"), classBtn: $("classBtn"),
+    viewFront: $("viewFront"), viewTilt: $("viewTilt")
+  };
+
+  function cssVar(name){ return getComputedStyle(document.body).getPropertyValue(name).trim(); }
+  function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+  function lerp(a,b,t){ return a + (b-a)*t; }
+
+  function setCanvasSize(canvas){
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
+    const w = Math.max(10, Math.floor(r.width * dpr));
+    const h = Math.max(10, Math.floor(r.height * dpr));
+    if(canvas.width !== w || canvas.height !== h){
+      canvas.width = w; canvas.height = h;
+    }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {w:r.width, h:r.height, dpr};
+  }
+
+  function updateLabels(){
+    $("stateText").textContent = state.running ? "运行中" : "已暂停";
+    $("topState").textContent = state.running ? "运行中" : "已暂停";
+    $("liveDot").classList.toggle("paused", !state.running);
+    controls.playBtn.textContent = state.running ? "暂停" : "继续";
+    $("timeVal").textContent = Math.round((state.time % TAU + TAU) % TAU * DEG) + "°";
+    $("speedVal").textContent = Number(state.speed).toFixed(2) + "×";
+    $("ampVal").textContent = Math.round(state.amp);
+    $("phaseVal").textContent = Math.round(state.phase * DEG) + "°";
+    $("lineVal").textContent = Number(state.lineWidth).toFixed(1);
+    $("fontVal").textContent = Math.round(state.fontSize);
+    $("zoomVal").textContent = Number(state.zoom).toFixed(2) + "×";
+    controls.themeBtn.textContent = state.theme === "dark" ? "切换浅色" : "切换深色";
+    controls.classBtn.textContent = state.classroom ? "退出增强" : "课堂增强";
+    controls.timeSlider.value = Math.round((state.time % TAU + TAU) % TAU * DEG);
+  }
+
+  /* =========================
+     3. 控件事件
+     ========================= */
+  controls.playBtn.addEventListener("click", () => { state.running = !state.running; updateLabels(); });
+  controls.resetBtn.addEventListener("click", () => {
+    state.time = 0;
+    state.graphHistory = [];
+    state.circleTrail = [];
+    state.running = true;
+    updateLabels();
+  });
+  controls.timeSlider.addEventListener("input", (e) => {
+    state.time = Number(e.target.value) / DEG;
+    state.running = false;
+    updateLabels();
+  });
+  $("clearSideGraph").addEventListener("click", () => {
+    state.graphHistory = [];
+  });
+  controls.speed.addEventListener("input", e => { state.speed = Number(e.target.value); updateLabels(); });
+  controls.amp.addEventListener("input", e => { state.amp = Number(e.target.value); updateLabels(); });
+  controls.phase.addEventListener("input", e => { state.phase = Number(e.target.value) / DEG; updateLabels(); });
+  controls.direction.addEventListener("change", e => { state.direction = Number(e.target.value); });
+  ["showX","showY","showGuide","showTrail","showGraph","showGrid"].forEach(k => {
+    controls[k].addEventListener("change", e => { state[k] = e.target.checked; });
+  });
+  controls.lineWidth.addEventListener("input", e => { state.lineWidth = Number(e.target.value); updateLabels(); });
+  controls.fontSize.addEventListener("input", e => { state.fontSize = Number(e.target.value); updateLabels(); });
+  controls.zoom.addEventListener("input", e => { state.zoom = Number(e.target.value); updateLabels(); });
+  controls.themeBtn.addEventListener("click", () => {
+    state.theme = state.theme === "dark" ? "light" : "dark";
+    document.body.classList.toggle("light", state.theme === "light");
+    updateLabels();
+  });
+  controls.classBtn.addEventListener("click", () => {
+    state.classroom = !state.classroom;
+    state.lineWidth = state.classroom ? 5 : 3;
+    state.fontSize = state.classroom ? 21 : 16;
+    controls.lineWidth.value = state.lineWidth;
+    controls.fontSize.value = state.fontSize;
+    updateLabels();
+  });
+  controls.viewFront.addEventListener("click", () => { state.rotX = 0; state.rotY = 0; state.zoom = 1; controls.zoom.value = 1; updateLabels(); });
+  controls.viewTilt.addEventListener("click", () => { state.rotX = -0.62; state.rotY = 0.62; state.zoom = 1; controls.zoom.value = 1; updateLabels(); });
+
+  document.querySelectorAll("[data-preset]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const p = btn.dataset.preset;
+      if(p === "standard"){
+        Object.assign(state, {speed:1, amp:120, phase:0, direction:1});
+      }else if(p === "slow"){
+        Object.assign(state, {speed:.35, amp:130, phase:0, direction:1});
+      }else if(p === "phase90"){
+        Object.assign(state, {speed:.65, amp:125, phase:Math.PI/2, direction:1});
+      }
+      controls.speed.value = state.speed;
+      controls.amp.value = state.amp;
+      controls.phase.value = Math.round(state.phase * DEG);
+      controls.direction.value = String(state.direction);
+      updateLabels();
+    });
+  });
+
+  $("collapseBtn").addEventListener("click", () => {
+    if(window.innerWidth <= 680){
+      document.body.classList.toggle("mobile-sidebar-open");
+    }else{
+      document.body.classList.toggle("sidebar-collapsed");
+    }
+  });
+  $("mobileFab").addEventListener("click", () => document.body.classList.add("mobile-sidebar-open"));
+  document.addEventListener("keydown", e => {
+    if(e.code === "Space"){
+      e.preventDefault();
+      state.running = !state.running;
+      updateLabels();
+    }
+  });
+
+  const analysis = $("analysis");
+  $("analysisBtn").addEventListener("click", () => {
+    analysis.classList.toggle("collapsed");
+    $("analysisBtn").textContent = analysis.classList.contains("collapsed") ? "▴" : "▾";
+  });
+
+  /* =========================
+     4. 3D 交互：拖拽旋转、滚轮/双指缩放
+     ========================= */
+  let dragging = false, lastX = 0, lastY = 0;
+  let pinchDist = 0;
+
+  function pointerStart(x,y){ dragging = true; lastX = x; lastY = y; }
+  function pointerMove(x,y){
+    if(!dragging) return;
+    const dx = x - lastX, dy = y - lastY;
+    state.rotY += dx * 0.009;
+    state.rotX += dy * 0.009;
+    state.rotX = clamp(state.rotX, -1.35, 1.35);
+    lastX = x; lastY = y;
+  }
+  function pointerEnd(){ dragging = false; }
+
+  canvas3d.addEventListener("mousedown", e => pointerStart(e.clientX, e.clientY));
+  window.addEventListener("mousemove", e => pointerMove(e.clientX, e.clientY));
+  window.addEventListener("mouseup", pointerEnd);
+  canvas3d.addEventListener("wheel", e => {
+    e.preventDefault();
+    state.zoom = clamp(state.zoom * (e.deltaY > 0 ? .94 : 1.06), .65, 1.8);
+    controls.zoom.value = state.zoom;
+    updateLabels();
+  }, {passive:false});
+
+  canvas3d.addEventListener("touchstart", e => {
+    if(e.touches.length === 1){
+      pointerStart(e.touches[0].clientX, e.touches[0].clientY);
+    }else if(e.touches.length === 2){
+      dragging = false;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchDist = Math.hypot(dx, dy);
+    }
+  }, {passive:false});
+  canvas3d.addEventListener("touchmove", e => {
+    e.preventDefault();
+    if(e.touches.length === 1){
+      pointerMove(e.touches[0].clientX, e.touches[0].clientY);
+    }else if(e.touches.length === 2){
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const d = Math.hypot(dx, dy);
+      if(pinchDist > 0){
+        state.zoom = clamp(state.zoom * (d / pinchDist), .65, 1.8);
+        controls.zoom.value = state.zoom;
+        updateLabels();
+      }
+      pinchDist = d;
+    }
+  }, {passive:false});
+  canvas3d.addEventListener("touchend", () => { pointerEnd(); pinchDist = 0; });
+
+  /* =========================
+     5. 绘图基础
+     ========================= */
+  function clear(ctx, w, h){
+    ctx.clearRect(0,0,w,h);
+    const grad = ctx.createLinearGradient(0,0,w,h);
+    if(state.theme === "dark"){
+      grad.addColorStop(0,"rgba(20,38,68,.28)");
+      grad.addColorStop(1,"rgba(3,10,20,.16)");
+    }else{
+      grad.addColorStop(0,"rgba(255,255,255,.65)");
+      grad.addColorStop(1,"rgba(208,226,248,.30)");
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,w,h);
+  }
+
+  function drawGrid(ctx, w, h, step=42){
+    if(!state.showGrid) return;
+    ctx.save();
+    ctx.strokeStyle = cssVar("--grid");
+    ctx.globalAlpha = state.theme === "dark" ? .34 : .45;
+    ctx.lineWidth = 1;
+    for(let x=0; x<=w; x+=step){ line(ctx,x,0,x,h); }
+    for(let y=0; y<=h; y+=step){ line(ctx,0,y,w,y); }
+    ctx.restore();
+  }
+
+  function line(ctx, x1, y1, x2, y2){ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  function circle(ctx, x, y, r, fill, stroke, lw=1){
+    ctx.beginPath(); ctx.arc(x,y,r,0,TAU);
+    if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+    if(stroke){ ctx.strokeStyle=stroke; ctx.lineWidth=lw; ctx.stroke(); }
+  }
+  function roundRect(ctx, x, y, w, h, r){
+    const rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr,y);
+    ctx.arcTo(x+w,y,x+w,y+h,rr);
+    ctx.arcTo(x+w,y+h,x,y+h,rr);
+    ctx.arcTo(x,y+h,x,y,rr);
+    ctx.arcTo(x,y,x+w,y,rr);
+    ctx.closePath();
+  }
+  function drawText(ctx, text, x, y, size=state.fontSize, color=cssVar("--text"), align="center", weight="700"){
+    ctx.save();
+    ctx.font = `${weight} ${size}px ${cssVar("--font")}`;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+    // 深色投影时给文字描边，投影教室后排更清晰。
+    ctx.strokeStyle = state.theme === "dark" ? "rgba(0,0,0,.55)" : "rgba(255,255,255,.75)";
+    ctx.lineWidth = Math.max(3, size * .18);
+    ctx.strokeText(text,x,y);
+    ctx.fillText(text,x,y);
+    ctx.restore();
+  }
+  function dashed(ctx, pattern=[8,8], draw){
+    ctx.save(); ctx.setLineDash(pattern); draw(); ctx.restore();
+  }
+
+  function colors(){
+    return {
+      text: cssVar("--text"), muted: cssVar("--muted"), line: cssVar("--line"), grid: cssVar("--grid"),
+      x: cssVar("--accent"), y: cssVar("--accent3"), r: cssVar("--accent2"), good: cssVar("--good"), warn: cssVar("--warn")
+    };
+  }
+
+  /* =========================
+     6. 3D 投影绘制
+     ========================= */
+  function rotate3D(p){
+    // 先绕 y 轴旋转，再绕 x 轴旋转，构建可旋转观察效果。
+    const cy = Math.cos(state.rotY), sy = Math.sin(state.rotY);
+    const cx = Math.cos(state.rotX), sx = Math.sin(state.rotX);
+    let x = p.x * cy + p.z * sy;
+    let z = -p.x * sy + p.z * cy;
+    let y = p.y * cx - z * sx;
+    z = p.y * sx + z * cx;
+    return {x,y,z};
+  }
+
+  function project(p, centerX, centerY, baseScale){
+    const q = rotate3D(p);
+    const d = 720;
+    const scale = baseScale * state.zoom * d / (d - q.z);
+    return {x:centerX + q.x*scale, y:centerY - q.y*scale, z:q.z, scale};
+  }
+
+  function drawPolyline3D(ctx, pts, centerX, centerY, scale, stroke, lw, alpha=1){
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lw;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    pts.forEach((p,i) => {
+      const s = project(p, centerX, centerY, scale);
+      if(i===0) ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y);
+    });
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPoint3D(ctx, p, centerX, centerY, scale, fill, radius=8, label=""){
+    const s = project(p, centerX, centerY, scale);
+    circle(ctx, s.x, s.y, radius * state.zoom, fill, "rgba(255,255,255,.92)", Math.max(2,state.lineWidth*.55));
+    if(label) drawText(ctx, label, s.x + 20, s.y - 18, state.fontSize, fill, "left");
+    return s;
+  }
+
+  function draw3D(){
+    const {w,h} = setCanvasSize(canvas3d);
+    const C = colors();
+    clear(ctx3d,w,h); drawGrid(ctx3d,w,h,44);
+    const cx = w/2, cy = h/2 + Math.min(30, h*.05);
+    const base = Math.min(w,h) / 440;
+    const R = state.amp;
+    const theta = state.direction * state.time + state.phase;
+    const px = R * Math.cos(theta);
+    const py = R * Math.sin(theta);
+
+    if(state.showTrail){
+      state.circleTrail.push({x:px,y:py,z:0});
+      if(state.circleTrail.length > MAX_TRAIL) state.circleTrail.shift();
+    }else{
+      state.circleTrail = [];
+    }
+
+    // 圆周轨道
+    const circlePts = [];
+    for(let i=0;i<=180;i++){
+      const a = i/180*TAU;
+      circlePts.push({x:R*Math.cos(a), y:R*Math.sin(a), z:0});
+    }
+    drawPolyline3D(ctx3d, circlePts, cx, cy, base, C.line, Math.max(2.2,state.lineWidth), .82);
+
+    // 圆面淡淡填充，用多条平行线增强 3D 旋转感。
+    ctx3d.save();
+    ctx3d.globalAlpha = state.theme === "dark" ? .22 : .16;
+    ctx3d.strokeStyle = C.grid;
+    ctx3d.lineWidth = 1.2;
+    for(let yy=-R; yy<=R; yy+=R/5){
+      const span = Math.sqrt(Math.max(0, R*R - yy*yy));
+      drawPolyline3D(ctx3d, [{x:-span,y:yy,z:0},{x:span,y:yy,z:0}], cx, cy, base, C.grid, 1.1, .55);
+    }
+    for(let xx=-R; xx<=R; xx+=R/5){
+      const span = Math.sqrt(Math.max(0, R*R - xx*xx));
+      drawPolyline3D(ctx3d, [{x:xx,y:-span,z:0},{x:xx,y:span,z:0}], cx, cy, base, C.grid, 1.1, .45);
+    }
+    ctx3d.restore();
+
+    // 坐标轴
+    drawPolyline3D(ctx3d, [{x:-R*1.25,y:0,z:0},{x:R*1.32,y:0,z:0}], cx, cy, base, C.x, state.lineWidth+1, .96);
+    drawPolyline3D(ctx3d, [{x:0,y:-R*1.25,z:0},{x:0,y:R*1.32,z:0}], cx, cy, base, C.y, state.lineWidth+1, .96);
+    drawPolyline3D(ctx3d, [{x:0,y:0,z:-R*.8},{x:0,y:0,z:R*.8}], cx, cy, base, C.muted, Math.max(1.5,state.lineWidth*.6), .55);
+
+    // 运动轨迹
+    if(state.showTrail && state.circleTrail.length > 3){
+      drawPolyline3D(ctx3d, state.circleTrail, cx, cy, base, C.r, Math.max(2,state.lineWidth*.9), .75);
+    }
+
+    // 半径矢量与投影辅助线
+    drawPolyline3D(ctx3d, [{x:0,y:0,z:0},{x:px,y:py,z:0}], cx, cy, base, C.r, state.lineWidth+1.5, 1);
+
+    if(state.showGuide){
+      dashed(ctx3d, [10,8], () => {
+        drawPolyline3D(ctx3d, [{x:px,y:py,z:0},{x:px,y:0,z:0}], cx, cy, base, C.x, Math.max(2,state.lineWidth), .9);
+        drawPolyline3D(ctx3d, [{x:px,y:py,z:0},{x:0,y:py,z:0}], cx, cy, base, C.y, Math.max(2,state.lineWidth), .9);
+      });
+    }
+
+    // 点：圆周点、x 投影、y 投影
+    drawPoint3D(ctx3d, {x:px,y:py,z:0}, cx, cy, base, C.r, 9, "圆周点");
+    if(state.showX) drawPoint3D(ctx3d, {x:px,y:0,z:0}, cx, cy, base, C.x, 7, "水平投影");
+    if(state.showY) drawPoint3D(ctx3d, {x:0,y:py,z:0}, cx, cy, base, C.y, 7, "竖直投影");
+
+    // 角度扇形：用近似小圆弧表示“圆周位置”
+    const arcR = R * .28;
+    const arcPts = [];
+    const end = ((theta % TAU) + TAU) % TAU;
+    const steps = Math.max(8, Math.ceil(end / TAU * 72));
+    for(let i=0;i<=steps;i++){
+      const a = i/steps * end;
+      arcPts.push({x:arcR*Math.cos(a), y:arcR*Math.sin(a), z:0});
+    }
+    drawPolyline3D(ctx3d, arcPts, cx, cy, base, C.good, Math.max(2,state.lineWidth*.8), .75);
+
+    // 标签与数值卡片
+    drawText(ctx3d, "x 方向分运动", project({x:R*1.45,y:0,z:0},cx,cy,base).x, project({x:R*1.45,y:0,z:0},cx,cy,base).y, state.fontSize, C.x, "left");
+    drawText(ctx3d, "y 方向分运动", project({x:0,y:R*1.45,z:0},cx,cy,base).x, project({x:0,y:R*1.45,z:0},cx,cy,base).y, state.fontSize, C.y, "center");
+
+    drawInfoCard(ctx3d, w, h, [
+      {k:"圆周位置", v: Math.round(((theta%TAU+TAU)%TAU)*DEG) + "°", c:C.good},
+      {k:"水平投影", v: normalizedText(px/R), c:C.x},
+      {k:"竖直投影", v: normalizedText(py/R), c:C.y}
+    ]);
+  }
+
+  function normalizedText(n){
+    const sign = n >= 0 ? "+" : "−";
+    return sign + Math.abs(n).toFixed(2) + " 振幅";
+  }
+
+  function drawInfoCard(ctx, w, h, rows){
+    const C = colors();
+    const cardW = Math.min(260, w - 30);
+    const x = 16, y = h - 118, rowH = 29;
+    ctx.save();
+    ctx.globalAlpha = .96;
+    roundRect(ctx, x, y, cardW, 96, 18);
+    ctx.fillStyle = state.theme === "dark" ? "rgba(5,13,25,.62)" : "rgba(255,255,255,.72)";
+    ctx.fill();
+    ctx.strokeStyle = state.theme === "dark" ? "rgba(255,255,255,.14)" : "rgba(20,34,58,.12)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    rows.forEach((r,i) => {
+      drawText(ctx, r.k, x+16, y+22+i*rowH, Math.max(12,state.fontSize-3), C.muted, "left", "700");
+      drawText(ctx, r.v, x+cardW-14, y+22+i*rowH, Math.max(12,state.fontSize-3), r.c, "right", "900");
+    });
+    ctx.restore();
+  }
+
+  /* =========================
+     7. 右侧分运动与时间图像
+     ========================= */
+  function draw2D(){
+    const {w,h} = setCanvasSize(canvas2d);
+    const C = colors();
+    clear(ctx2d,w,h); drawGrid(ctx2d,w,h,44);
+
+    const theta = state.direction * state.time + state.phase;
+    const xNorm = Math.cos(theta);
+    const yNorm = Math.sin(theta);
+    const m = Math.max(18, Math.min(34, w*.035));
+    const topH = state.showGraph ? h * 0.45 : h - 38;
+    const graphTop = topH + 18;
+    const axisLen = Math.min(w - m*4, Math.max(220, w * .66));
+    const ampPx = Math.min(axisLen * .42, topH * .26, state.amp * (w<520 ? .75 : .95));
+    const centerX = w * .52;
+    const xTrackY = topH * .35;
+    const yTrackX = w * .22;
+    const yCenterY = topH * .68;
+
+    drawMotionTrack(ctx2d, centerX, xTrackY, ampPx, "horizontal", xNorm, C.x, "水平分运动：左右往复", state.showX);
+    drawMotionTrack(ctx2d, yTrackX, yCenterY, ampPx, "vertical", yNorm, C.y, "竖直分运动：上下往复", state.showY);
+
+    // 同步提示：把左右/上下两条分运动与圆周点联系起来。
+    ctx2d.save();
+    ctx2d.strokeStyle = state.theme === "dark" ? "rgba(255,255,255,.18)" : "rgba(20,34,58,.15)";
+    ctx2d.lineWidth = Math.max(1.5, state.lineWidth*.45);
+    dashed(ctx2d, [8,7], () => {
+      if(state.showX && state.showY){
+        line(ctx2d, centerX + xNorm*ampPx, xTrackY, yTrackX, yCenterY - yNorm*ampPx);
+      }
+    });
+    ctx2d.restore();
+
+    if(state.showGraph){ drawGraphs(ctx2d, w, h, graphTop, xNorm, yNorm); }
+
+    // 右上角小相位钟：帮助学生确认两条分运动来自同一个圆周角。
+    drawMiniClock(ctx2d, w-82, 88, Math.min(52, w*.085), theta);
+  }
+
+  function drawMotionTrack(ctx, cx, cy, amp, mode, value, color, label, enabled){
+    const C = colors();
+    ctx.save();
+    ctx.globalAlpha = enabled ? 1 : .22;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = C.line;
+    ctx.lineWidth = state.lineWidth + 1;
+
+    if(mode === "horizontal"){
+      line(ctx, cx-amp, cy, cx+amp, cy);
+      // 端点和中心
+      circle(ctx, cx-amp, cy, 5, color, null);
+      circle(ctx, cx+amp, cy, 5, color, null);
+      circle(ctx, cx, cy, 4, C.line, null);
+      // 位移条
+      ctx.strokeStyle = color;
+      ctx.lineWidth = state.lineWidth + 4;
+      line(ctx, cx, cy, cx + value*amp, cy);
+      circle(ctx, cx + value*amp, cy, 12, color, "white", Math.max(2,state.lineWidth*.55));
+      drawArrow(ctx, cx + value*amp, cy, cx + value*amp + velocityDir(value,"cos")*34, cy, color);
+      drawText(ctx, label, cx, cy - 46, state.fontSize, color, "center", "900");
+      drawText(ctx, value>0 ? "右侧" : value<0 ? "左侧" : "中心", cx + value*amp, cy + 34, Math.max(12,state.fontSize-2), C.text, "center");
+    }else{
+      line(ctx, cx, cy-amp, cx, cy+amp);
+      circle(ctx, cx, cy-amp, 5, color, null);
+      circle(ctx, cx, cy+amp, 5, color, null);
+      circle(ctx, cx, cy, 4, C.line, null);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = state.lineWidth + 4;
+      line(ctx, cx, cy, cx, cy - value*amp);
+      circle(ctx, cx, cy - value*amp, 12, color, "white", Math.max(2,state.lineWidth*.55));
+      drawArrow(ctx, cx, cy - value*amp, cx, cy - value*amp - velocityDir(value,"sin")*34, color);
+      drawText(ctx, label, cx + 16, cy - amp - 32, state.fontSize, color, "left", "900");
+      drawText(ctx, value>0 ? "上方" : value<0 ? "下方" : "中心", cx + 38, cy - value*amp, Math.max(12,state.fontSize-2), C.text, "left");
+    }
+    ctx.restore();
+  }
+
+  // 速度方向只用于课堂直观显示：在端点附近箭头自动变小。
+  function velocityDir(value, kind){
+    const theta = state.direction * state.time + state.phase;
+    const v = kind === "cos" ? -Math.sin(theta) * state.direction : Math.cos(theta) * state.direction;
+    return Math.abs(v) < .08 ? 0 : Math.sign(v) * clamp(Math.abs(v), .35, 1);
+  }
+
+  function drawArrow(ctx, x1, y1, x2, y2, color){
+    const len = Math.hypot(x2-x1,y2-y1);
+    if(len < 6) return;
+    const ang = Math.atan2(y2-y1,x2-x1);
+    const head = 10 + state.lineWidth;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = Math.max(2,state.lineWidth);
+    ctx.lineCap = "round";
+    line(ctx, x1, y1, x2, y2);
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2 - head*Math.cos(ang-.48), y2 - head*Math.sin(ang-.48));
+    ctx.lineTo(x2 - head*Math.cos(ang+.48), y2 - head*Math.sin(ang+.48));
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGraphs(ctx, w, h, top, xNorm, yNorm){
+    const C = colors();
+    const left = Math.max(38, w*.065), right = w - Math.max(22,w*.04);
+    const graphH = (h - top - 26) / 2;
+    const gap = 14;
+    drawSingleGraph(ctx, left, top, right-left, graphH, "水平位置随时间变化", C.x, "x", "cos");
+    drawSingleGraph(ctx, left, top + graphH + gap, right-left, graphH, "竖直位置随时间变化", C.y, "y", "sin");
+  }
+
+  function drawSingleGraph(ctx, x, y, w, h, label, color, key, fn){
+    const C = colors();
+    ctx.save();
+    // 背景框
+    roundRect(ctx, x, y, w, h, 16);
+    ctx.fillStyle = state.theme === "dark" ? "rgba(0,0,0,.18)" : "rgba(255,255,255,.48)";
+    ctx.fill();
+    ctx.strokeStyle = state.theme === "dark" ? "rgba(255,255,255,.12)" : "rgba(20,34,58,.13)";
+    ctx.lineWidth = 1; ctx.stroke();
+
+    const mid = y + h/2;
+    const amp = h * .32;
+    ctx.strokeStyle = C.grid;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = .65;
+    line(ctx, x+10, mid, x+w-10, mid);
+    ctx.globalAlpha = 1;
+
+    const startT = state.time - TAU * 1.15;
+    const endT = state.time + TAU * .1;
+    const pts = [];
+    const N = Math.max(100, Math.floor(w / 3));
+    for(let i=0;i<=N;i++){
+      const t = startT + (endT-startT)*i/N;
+      const theta = state.direction * t + state.phase;
+      const v = fn === "cos" ? Math.cos(theta) : Math.sin(theta);
+      pts.push({sx:x+10 + (w-20)*i/N, sy:mid - v*amp});
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = state.lineWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    pts.forEach((p,i)=> i?ctx.lineTo(p.sx,p.sy):ctx.moveTo(p.sx,p.sy));
+    ctx.stroke();
+
+    // 当前点高亮
+    const curV = fn === "cos" ? Math.cos(state.direction * state.time + state.phase) : Math.sin(state.direction * state.time + state.phase);
+    const curX = x+10 + (w-20)*(TAU*1.15)/(TAU*1.25);
+    const curY = mid - curV*amp;
+    ctx.strokeStyle = state.theme === "dark" ? "rgba(255,255,255,.35)" : "rgba(20,34,58,.25)";
+    ctx.lineWidth = 1.5;
+    dashed(ctx, [6,6], () => line(ctx, curX, y+8, curX, y+h-8));
+    circle(ctx, curX, curY, 7.5, color, "white", 2);
+
+    drawText(ctx, label, x+14, y+18, Math.max(12,state.fontSize-3), color, "left", "900");
+    drawText(ctx, key + " 投影点", x+w-14, y+18, Math.max(12,state.fontSize-4), C.muted, "right", "700");
+    ctx.restore();
+  }
+
+  function drawMiniClock(ctx, cx, cy, r, theta){
+    const C = colors();
+    ctx.save();
+    ctx.globalAlpha = .95;
+    ctx.strokeStyle = C.line;
+    ctx.lineWidth = Math.max(2,state.lineWidth*.65);
+    circle(ctx, cx, cy, r, state.theme === "dark" ? "rgba(0,0,0,.18)" : "rgba(255,255,255,.55)", C.line, Math.max(2,state.lineWidth*.65));
+    ctx.strokeStyle = C.x; line(ctx, cx-r, cy, cx+r, cy);
+    ctx.strokeStyle = C.y; line(ctx, cx, cy-r, cx, cy+r);
+    const px = cx + Math.cos(theta)*r*.82;
+    const py = cy - Math.sin(theta)*r*.82;
+    ctx.strokeStyle = C.r;
+    ctx.lineWidth = state.lineWidth + 1;
+    line(ctx, cx, cy, px, py);
+    circle(ctx, px, py, 7, C.r, "white", 2);
+    drawText(ctx, "同步角", cx, cy+r+20, Math.max(11,state.fontSize-4), C.muted, "center");
+    ctx.restore();
+  }
+
+  /* =========================
+     8. 侧栏实时曲线
+     ========================= */
+  function drawSidebarGraph(){
+    const {w,h} = setCanvasSize(canvasSide);
+    const C = colors();
+    ctxSide.clearRect(0,0,w,h);
+
+    const bg = ctxSide.createLinearGradient(0,0,0,h);
+    if(state.theme === "dark"){
+      bg.addColorStop(0, "rgba(14,26,46,.92)");
+      bg.addColorStop(1, "rgba(7,15,27,.88)");
+    }else{
+      bg.addColorStop(0, "rgba(255,255,255,.97)");
+      bg.addColorStop(1, "rgba(235,244,255,.96)");
+    }
+    ctxSide.fillStyle = bg;
+    ctxSide.fillRect(0,0,w,h);
+
+    const pad = 10;
+    const innerW = w - pad*2;
+    const boxH = (h - pad*3 - 18) / 2;
+    drawSidebarTrace(ctxSide, pad, pad + 10, innerW, boxH, C.x, "x(t) 水平位移");
+    drawSidebarTrace(ctxSide, pad, pad*2 + 10 + boxH, innerW, boxH, C.y, "y(t) 竖直位移");
+
+    drawText(ctxSide, "时间 →", w - 16, h - 6, 11, C.muted, "right", "700");
+  }
+
+  function drawSidebarTrace(ctx, x, y, w, h, color, title){
+    const C = colors();
+    roundRect(ctx, x, y, w, h, 14);
+    ctx.fillStyle = state.theme === "dark" ? "rgba(255,255,255,.03)" : "rgba(255,255,255,.68)";
+    ctx.fill();
+    ctx.strokeStyle = state.theme === "dark" ? "rgba(255,255,255,.12)" : "rgba(20,34,58,.12)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const gx = x + 14, gy = y + 24, gw = w - 28, gh = h - 34;
+    const mid = gy + gh/2;
+    const amp = gh * .36;
+
+    ctx.save();
+    ctx.strokeStyle = C.grid;
+    ctx.globalAlpha = .7;
+    ctx.lineWidth = 1;
+    line(ctx, gx, mid, gx + gw, mid);
+    dashed(ctx, [4,5], () => {
+      line(ctx, gx, mid - amp, gx + gw, mid - amp);
+      line(ctx, gx, mid + amp, gx + gw, mid + amp);
+    });
+    ctx.restore();
+
+    drawText(ctx, title, gx, y + 16, Math.max(11, state.fontSize - 5), color, "left", "900");
+    drawText(ctx, "+A", gx - 2, mid - amp - 4, 10, C.muted, "left", "700");
+    drawText(ctx, "0", gx - 2, mid - 4, 10, C.muted, "left", "700");
+    drawText(ctx, "-A", gx - 2, mid + amp + 12, 10, C.muted, "left", "700");
+
+    const history = state.graphHistory;
+    const windowSpan = TAU * 2.2;
+    const currentT = history.length ? history[history.length - 1].t : state.time;
+    const startT = currentT - windowSpan;
+    const pts = [];
+    for(const item of history){
+      if(item.t < startT) continue;
+      const sx = gx + (item.t - startT) / windowSpan * gw;
+      const sy = mid - (color === C.x ? item.x : item.y) * amp;
+      pts.push({sx, sy});
+    }
+
+    if(pts.length < 2){
+      const curValue = color === C.x ? Math.cos(state.direction * state.time + state.phase) : Math.sin(state.direction * state.time + state.phase);
+      pts.push({sx: gx + gw * .9, sy: mid - curValue * amp});
+    }
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(2.2, state.lineWidth * .85);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    pts.forEach((p, i) => i ? ctx.lineTo(p.sx, p.sy) : ctx.moveTo(p.sx, p.sy));
+    ctx.stroke();
+
+    const current = pts[pts.length - 1];
+    ctx.strokeStyle = state.theme === "dark" ? "rgba(255,255,255,.28)" : "rgba(20,34,58,.20)";
+    ctx.lineWidth = 1.3;
+    dashed(ctx, [5,5], () => line(ctx, current.sx, gy, current.sx, gy + gh));
+    circle(ctx, current.sx, current.sy, 5.5, color, "white", 2);
+    ctx.restore();
+  }
+
+  /* =========================
+     9. 动画循环
+     ========================= */
+  function tick(ts){
+    if(!state.lastTick) state.lastTick = ts;
+    const dt = Math.min(.05, (ts - state.lastTick) / 1000);
+    state.lastTick = ts;
+
+    if(state.running){
+      state.time += dt * state.speed * 1.25;
+      if(state.time > TAU * 1000) state.time = state.time % TAU;
+    }
+
+    // 记录历史用于可能的拓展；当前图像直接函数绘制，保留状态方便二次开发。
+    const theta = state.direction * state.time + state.phase;
+    const last = state.graphHistory[state.graphHistory.length - 1];
+    if(!last || Math.abs(last.t - state.time) > 1e-4){
+      state.graphHistory.push({t:state.time, x:Math.cos(theta), y:Math.sin(theta)});
+      if(state.graphHistory.length > MAX_HISTORY) state.graphHistory.shift();
+    }
+
+    draw3D();
+    draw2D();
+    drawSidebarGraph();
+    updateLabels();
+    requestAnimationFrame(tick);
+  }
+
+  window.addEventListener("resize", () => { draw3D(); draw2D(); drawSidebarGraph(); });
+  updateLabels();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
